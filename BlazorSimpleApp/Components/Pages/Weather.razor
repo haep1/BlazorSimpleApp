@@ -1,5 +1,9 @@
 ﻿@page "/weather"
+@rendermode InteractiveServer
+@using BlazorSimpleApp.GeoLocation
+@using BlazorSimpleApp.Models
 @attribute [StreamRendering]
+@inject IGeoLocationBroker GeoLocationBroker
 
 <PageTitle>Weather</PageTitle>
 
@@ -7,7 +11,7 @@
 
 <p>This component demonstrates showing data.</p>
 
-@if (forecasts == null)
+@if (_hourlyForecasts == null)
 {
     <p>
         <em>Loading...</em>
@@ -15,23 +19,45 @@
 }
 else
 {
+    <p>@_message</p>
+
     <table class="table">
         <thead>
         <tr>
             <th>Date</th>
             <th>Temp. (C)</th>
-            <th>Temp. (F)</th>
             <th>Summary</th>
         </tr>
         </thead>
         <tbody>
-        @foreach (var forecast in forecasts)
+        @if (_forecasts != null)
+        {
+            foreach (var forecast in _forecasts)
+            {
+                <tr>
+                    <td>@forecast.Date.ToShortDateString()</td>
+                    <td>@forecast.TemperatureC</td>
+                    <td>@forecast.TemperatureF</td>
+                    <td>@forecast.Summary</td>
+                </tr>
+            }
+        }
+        </tbody>
+    </table>
+
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Hour</th>
+            <th>Temp. (C)</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var forecast in _hourlyForecasts)
         {
             <tr>
-                <td>@forecast.Date.ToShortDateString()</td>
-                <td>@forecast.TemperatureC</td>
-                <td>@forecast.TemperatureF</td>
-                <td>@forecast.Summary</td>
+                <td>@forecast.Hour</td>
+                <td>@Math.Round(forecast.Temperature)</td>
             </tr>
         }
         </tbody>
@@ -39,23 +65,32 @@ else
 }
 
 @code {
-    private WeatherForecast[]? forecasts;
+    private WeatherForecast[]? _forecasts;
+    private HourlyWeather[]? _hourlyForecasts;
+    private bool _isRendered;
+    private string _message = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
-        // Simulate asynchronous loading to demonstrate streaming rendering
-        await Task.Delay(500);
-
         var startDate = DateOnly.FromDateTime(DateTime.Now);
         var summaries = new[] { "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching" };
-        forecasts = Enumerable.Range(1, 5).Select(index => new WeatherForecast
+        _forecasts = Enumerable.Range(1, 5).Select(index => new WeatherForecast
         {
             Date = startDate.AddDays(index),
             TemperatureC = Random.Shared.Next(-20, 55),
             Summary = summaries[Random.Shared.Next(summaries.Length)]
         }).ToArray();
-        
-        WeatherApiService.GetWeather(13.41, 52.52);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            GeoLocationBroker.CoordinatesChanged += OnCoordinatesChanged;
+            GeoLocationBroker.OnGeolocationPositionError += OnGeolocationPositionError;
+            await GeoLocationBroker.RequestGeoLocationAsync();
+            _isRendered = true;
+        }
     }
 
     private class WeatherForecast
@@ -65,4 +100,30 @@ else
         public string? Summary { get; set; }
         public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
     }
+
+    private async ValueTask OnCoordinatesChanged(Coordinate coordinates)
+    {
+        if (_isRendered)
+        {
+            _message = $"Latitude: {coordinates.Latitude}, Longitude: {coordinates.Longitude}";
+            _hourlyForecasts = (await WeatherApiService.GetWeather((float)coordinates.Latitude, (float)coordinates.Longitude))?.ToArray();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async ValueTask OnGeolocationPositionError(GeolocationPositionError error)
+    {
+        if (_isRendered)
+        {
+            _message = $"Error: {error.Message}";
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        GeoLocationBroker.CoordinatesChanged -= OnCoordinatesChanged;
+        GeoLocationBroker.OnGeolocationPositionError -= OnGeolocationPositionError;
+    }
+
 }

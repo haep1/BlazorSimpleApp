@@ -1,10 +1,12 @@
 using BlazorSimpleApp.Components;
+using BlazorSimpleApp.GeoLocation;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddScoped<IGeoLocationBroker, GeoLocationBroker>();
 
 var app = builder.Build();
 
