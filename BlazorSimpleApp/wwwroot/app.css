@@ -49,3 +49,7 @@ h1:focus {
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
 }
+
+table .current-hour {
+    background-color: #6EF6E5 !important;
+}

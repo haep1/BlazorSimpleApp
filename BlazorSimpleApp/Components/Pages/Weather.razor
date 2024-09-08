@@ -26,30 +26,6 @@ else
     <table class="table">
         <thead>
         <tr>
-            <th>Date</th>
-            <th>Temp. (C)</th>
-            <th>Summary</th>
-        </tr>
-        </thead>
-        <tbody>
-        @if (_forecasts != null)
-        {
-            foreach (var forecast in _forecasts)
-            {
-                <tr>
-                    <td>@forecast.Date.ToShortDateString()</td>
-                    <td>@forecast.TemperatureC</td>
-                    <td>@forecast.TemperatureF</td>
-                    <td>@forecast.Summary</td>
-                </tr>
-            }
-        }
-        </tbody>
-    </table>
-
-    <table class="table">
-        <thead>
-        <tr>
             <th>Hour</th>
             <th>Temp. (C)</th>
         </tr>
@@ -57,8 +33,12 @@ else
         <tbody>
         @foreach (var forecast in _hourlyForecasts)
         {
-            <tr>
-                <td>@forecast.Hour.ToShortTimeString()</td>
+            var currentHour = DateTime.Now.Hour;
+            var forecastHour = forecast.Hour.Hour;
+            var currentDay = DateTime.Now.Day;
+            var forecastDay = forecast.Hour.Day;
+            <tr class="@(forecastHour == currentHour && forecastDay == currentDay ? "current-hour" : "")">
+                <td>@forecast.Hour.ToShortDateString() - @forecast.Hour.ToShortTimeString()</td>
                 <td>@Math.Round(forecast.Temperature)</td>
             </tr>
         }
@@ -66,23 +46,20 @@ else
     </table>
 }
 
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        document.querySelectorAll('.current-hour').forEach(element => {
+            element.style.display = 'none';
+            element.offsetHeight; // Trigger a reflow
+            element.style.display = '';
+        });
+    });
+</script>
+
 @code {
-    private WeatherForecast[]? _forecasts;
     private HourlyWeather[]? _hourlyForecasts;
     private bool _isRendered;
     private string _message = string.Empty;
-
-    protected override void OnInitialized()
-    {
-        var startDate = DateOnly.FromDateTime(DateTime.Now);
-        var summaries = new[] { "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching" };
-        _forecasts = Enumerable.Range(1, 5).Select(index => new WeatherForecast
-        {
-            Date = startDate.AddDays(index),
-            TemperatureC = Random.Shared.Next(-20, 55),
-            Summary = summaries[Random.Shared.Next(summaries.Length)]
-        }).ToArray();
-    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -93,14 +70,6 @@ else
             await GeoLocationBroker.RequestGeoLocationAsync();
             _isRendered = true;
         }
-    }
-
-    private class WeatherForecast
-    {
-        public DateOnly Date { get; set; }
-        public int TemperatureC { get; set; }
-        public string? Summary { get; set; }
-        public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
     }
 
     private async ValueTask OnCoordinatesChanged(Coordinate coordinates)
