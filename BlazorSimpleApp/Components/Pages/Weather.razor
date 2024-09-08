@@ -1,9 +1,11 @@
 ﻿@page "/weather"
-@rendermode InteractiveServer
 @using BlazorSimpleApp.GeoLocation
 @using BlazorSimpleApp.Models
+@using BlazorSimpleApp.Services
+@rendermode InteractiveServer
 @attribute [StreamRendering]
 @inject IGeoLocationBroker GeoLocationBroker
+@inject GeocodingService GeocodingService
 
 <PageTitle>Weather</PageTitle>
 
@@ -56,7 +58,7 @@ else
         @foreach (var forecast in _hourlyForecasts)
         {
             <tr>
-                <td>@forecast.Hour</td>
+                <td>@forecast.Hour.ToShortTimeString()</td>
                 <td>@Math.Round(forecast.Temperature)</td>
             </tr>
         }
@@ -70,7 +72,7 @@ else
     private bool _isRendered;
     private string _message = string.Empty;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         var startDate = DateOnly.FromDateTime(DateTime.Now);
         var summaries = new[] { "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching" };
@@ -107,6 +109,8 @@ else
         {
             _message = $"Latitude: {coordinates.Latitude}, Longitude: {coordinates.Longitude}";
             _hourlyForecasts = (await WeatherApiService.GetWeather((float)coordinates.Latitude, (float)coordinates.Longitude))?.ToArray();
+            var city = await GeocodingService.GetNearestCityAsync(coordinates.Latitude, coordinates.Longitude);
+            _message += $", Nearest City: {city}";
             await InvokeAsync(StateHasChanged);
         }
     }

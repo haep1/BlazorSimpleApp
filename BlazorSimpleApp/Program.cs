@@ -1,5 +1,6 @@
 using BlazorSimpleApp.Components;
 using BlazorSimpleApp.GeoLocation;
+using BlazorSimpleApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddScoped<IGeoLocationBroker, GeoLocationBroker>();
+builder.Services.AddSingleton(sp => new GeocodingService(new HttpClient(), "2504ba23b10f4bdbac62ed6d23c94d82"));
 
 var app = builder.Build();
 
