@@ -2,6 +2,7 @@
 @using BlazorSimpleApp.GeoLocation
 @using BlazorSimpleApp.Models
 @using BlazorSimpleApp.Services
+@using BlazorSimpleApp.Components.Layout
 @rendermode InteractiveServer
 @attribute [StreamRendering]
 @inject IGeoLocationBroker GeoLocationBroker
@@ -22,6 +23,11 @@
 else
 {
     <p>@_message</p>
+    <br/>
+    <br/>
+    <h2>Weather Assistant:</h2>
+    <br/>
+    <MarkupRenderer Markup="@_forecastInterpretation" />
 
     <table class="table">
         <thead>
@@ -60,6 +66,7 @@ else
     private HourlyWeather[]? _hourlyForecasts;
     private bool _isRendered;
     private string _message = string.Empty;
+    private string? _forecastInterpretation = string.Empty;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -77,9 +84,14 @@ else
         if (_isRendered)
         {
             _message = $"Latitude: {coordinates.Latitude}, Longitude: {coordinates.Longitude}";
-            _hourlyForecasts = (await WeatherApiService.GetWeather((float)coordinates.Latitude, (float)coordinates.Longitude))?.ToArray();
+            var forecast = (await WeatherApiService.GetWeather((float)coordinates.Latitude, (float)coordinates.Longitude));
+            _hourlyForecasts = forecast?.ToArray();
             var city = await GeocodingService.GetNearestCityAsync(coordinates.Latitude, coordinates.Longitude);
-            _message += $", Nearest City: {city}";
+            if (forecast != null && city != null)
+            {
+                _forecastInterpretation = await WeatherApiService.GetWeatherInterpretation(forecast, city);
+                _message += $", Nearest City: {city}";
+            }
             await InvokeAsync(StateHasChanged);
         }
     }

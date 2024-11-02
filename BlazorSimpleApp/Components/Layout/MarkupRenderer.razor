@@ -1,0 +1,9 @@
+@if (Markup != null)
+{
+    @((MarkupString)Markup)
+}
+
+@code {
+    [Parameter]
+    public string? Markup { get; set; }
+}
